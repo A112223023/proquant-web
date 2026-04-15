@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProQuant AI 股市預測系統 - 登入</title>
+    
+    <style>
+        /* 基礎設定 */
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            position: relative;
+            overflow: hidden; 
+        }
+
+        /* 背景圖層 */
+        .bg-wrapper {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?q=80&w=2070&auto=format&fit=crop'); 
+            background-size: cover;
+            background-position: center;
+            transform: scaleX(-1);
+            z-index: 1;
+        }
+
+        .bg-wrapper::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.7) 100%);
+        }
+
+        /* 登入容器 */
+        .login-container {
+            position: relative;
+            z-index: 10;
+            width: 90%;
+            max-width: 400px;
+            margin: 10vh auto;
+            padding: 40px;
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(15px);
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        h2 { color: #f8fafc; margin-bottom: 8px; font-size: 28px; letter-spacing: 1px; }
+        p { color: #94a3b8; margin-bottom: 32px; font-size: 14px; }
+
+        .input-group { text-align: left; margin-bottom: 20px; }
+        .input-group label { display: block; color: #cbd5e1; margin-bottom: 8px; font-size: 14px; }
+        
+        .input-group input {
+            width: 100%;
+            padding: 14px;
+            box-sizing: border-box;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: #fff;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .input-group input:focus {
+            border-color: #38bdf8;
+            background: rgba(15, 23, 42, 0.8);
+            box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.1);
+        }
+
+        /* 按鈕樣式 */
+        .btn-container {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        .login-btn {
+            flex: 1;
+            padding: 14px;
+            background: linear-gradient(135deg, #38bdf8 0%, #0ea5e9 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .register-btn {
+            flex: 1;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn:active, .register-btn:active { transform: scale(0.98); }
+        .register-btn:hover { background: rgba(255, 255, 255, 0.15); }
+    </style>
+</head>
+<body>
+
+    <div class="bg-wrapper"></div>
+
+    <div class="login-container">
+        <h2>ProQuant AI</h2>
+        <p>量化分析與股市預測系統</p>
+
+        <form id="authForm">
+            <div class="input-group">
+                <label for="username">User ID (使用者帳號)</label>
+                <input type="text" id="username" placeholder="請輸入帳號" required>
+            </div>
+            <div class="input-group">
+                <label for="password">Password (密碼)</label>
+                <input type="password" id="password" placeholder="請輸入密碼" required>
+            </div>
+            
+            <div class="btn-container">
+                <button type="button" class="login-btn" onclick="handleLogin()">登入</button>
+                <button type="button" class="register-btn" onclick="handleRegister()">註冊帳號</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // --- 登入功能 ---
+        async function handleLogin() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if(!user || !pass) return alert('請輸入完整帳號密碼！');
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('登入成功！');
+                    window.location.href = data.redirect; // 導向 dashboard.html
+                } else {
+                    alert('登入失敗：' + data.error);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('系統連線發生錯誤，請確保後端伺服器已啟動。');
+            }
+        }
+
+        // --- 註冊功能 ---
+        async function handleRegister() {
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+
+            if(!user || !pass) return alert('請輸入帳號密碼來進行註冊！');
+
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, password: pass })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('註冊成功！現在您可以使用此帳號登入。');
+                } else {
+                    alert('註冊失敗：' + data.error);
+                }
+            } catch (error) {
+                console.error(error);
+                alert('系統連線發生錯誤');
+            }
+        }
+    </script>
+</body>
+</html>

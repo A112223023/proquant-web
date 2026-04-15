@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProQuant AI - 選股中心</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 基礎設定與深色背景 (與看盤頁一致) */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            color: #ffffff;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 414px;
+            height: 100vh;
+            background-color: #121212;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        /* 頂部搜尋列 (已移除小鈴鐺) */
+        .header {
+            padding: 15px 20px;
+            background-color: #1e1e1e;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        .search-bar {
+            flex: 1;
+            background-color: #2a2a2a;
+            border-radius: 20px;
+            padding: 8px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .search-bar input {
+            background: transparent;
+            border: none;
+            color: white;
+            outline: none;
+            width: 100%;
+            font-size: 14px;
+        }
+
+        /* 主要內容區 */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 80px;
+        }
+        .content::-webkit-scrollbar { display: none; }
+
+        /* 區塊標題 */
+        .section-title {
+            font-size: 16px;
+            font-weight: bold;
+            color: #a0a0a0;
+            margin: 20px 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title.first { margin-top: 5px; }
+        .section-badge {
+            background-color: #334155;
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        /* A區：策略選擇器 (橫向滑動) */
+        .strategy-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        .strategy-scroll::-webkit-scrollbar { display: none; }
+        
+        .strategy-card {
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 140px;
+            flex-shrink: 0;
+            transition: 0.3s;
+        }
+        .strategy-card.active {
+            background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+            border: none;
+            min-width: 220px;
+        }
+        .strategy-card h4 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .strategy-card p {
+            margin: 0;
+            font-size: 12px;
+            color: #e2e8f0;
+        }
+        .strategy-card.inactive p { color: #a0a0a0; }
+
+        /* B區：AI 精選結果列表 */
+        .stock-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #2a2a2a;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stock-info .name-code {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .stock-info .name { font-size: 18px; font-weight: bold; }
+        .stock-info .code { font-size: 14px; color: #a0a0a0; }
+        .ai-tag {
+            background-color: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .stock-price { text-align: right; }
+        .stock-price .price { font-size: 20px; font-weight: bold; }
+        .stock-price .change { font-size: 13px; margin-top: 4px; }
+        
+        /* 漲跌顏色動態切換 */
+        .text-up { color: #ef4444; }   /* 台股漲是紅色 */
+        .text-down { color: #22c55e; } /* 台股跌是綠色 */
+        .text-flat { color: #a0a0a0; } /* 平盤灰色 */
+
+        /* C區：主力追蹤視覺化 */
+        .chart-card {
+            background-color: #1e1e1e;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid #2a2a2a;
+        }
+        .chart-card h4 {
+            margin: 0 0 15px 0;
+            text-align: center;
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+        .chart-container { position: relative; height: 180px; width: 100%; }
+        
+        /* 底部導覽列 */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #333;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .nav-item.active { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .nav-item i { font-size: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <div class="header">
+            <div class="search-bar">
+                <i class="fas fa-search" style="color: #a0a0a0;"></i>
+                <input type="text" placeholder="搜尋股號/名稱">
+            </div>
+        </div>
+
+        <div class="content">
+            
+            <div class="section-title first"><div class="section-badge">A</div> 策略選擇器</div>
+            <div class="strategy-scroll">
+                <div class="strategy-card active">
+                    <h4><i class="fas fa-award"></i> AI 綜合動能評分</h4>
+                    <p>依照大腦模型勝率進行排序掃描</p>
+                </div>
+                <div class="strategy-card inactive">
+                    <h4 style="color: #cbd5e1;">外資連買</h4>
+                    <p>連續 3 日以上買超</p>
+                </div>
+                <div class="strategy-card inactive">
+                    <h4 style="color: #cbd5e1;">量大突破</h4>
+                    <p>成交量爆增 2 倍以上</p>
+                </div>
+            </div>
+
+            <div class="section-title"><div class="section-badge">B</div> AI 盤中即時精選</div>
+            
+            <div id="aiSelectionContainer">
+                <div style="text-align: center; padding: 30px; color: #888;">
+                    <i class="fas fa-spinner fa-spin fa-2x" style="margin-bottom: 10px;"></i>
+                    <p>正在呼叫後端 AI 模型掃描全市場...</p>
+                </div>
+            </div>
+
+            <div class="section-title"><div class="section-badge">C</div> 大盤籌碼視覺化 (無資料暫以範例展示)</div>
+            
+            <div class="chart-card">
+                <h4>近五日三大法人買賣超 (範例)</h4>
+                <div class="chart-container">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-card">
+                <h4>大戶籌碼集中度 (範例)</h4>
+                <div class="chart-container" style="height: 150px;">
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+                <div style="text-align: center; margin-top: -30px;">
+                    <div style="font-size: 24px; font-weight: bold; color: #ef4444;">78%</div>
+                    <div style="font-size: 14px; color: #ef4444;">高度集中</div>
+                </div>
+            </div>
+
+        </div>
+
+        <div class="bottom-nav">
+            <a href="dashboard.html" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>看盤</span>
+            </a>
+            <a href="selection.html" class="nav-item active">
+                <i class="fas fa-search-dollar"></i>
+                <span>選股</span>
+            </a>
+            <a href="ai_analysis.html" class="nav-item">
+                <i class="fas fa-microchip"></i>
+                <span>AI分析</span>
+            </a>
+            <a href="community.html" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>社群</span>
+            </a>
+            <a href="education.html" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>教學</span>
+            </a>
+        </div>
+
+    </div>
+
+    <script>
+        // ==========================================
+        // 1. 動態抓取選股清單資料並用 AI 評分排序
+        // ==========================================
+        const API_BASE_URL = "http://140.83.60.231:8000"; 
+        
+        // 這是預設要讓 AI 掃描的標的池 (你可以隨時新增)
+        const scanPool = ['2330', '2454', '3443', '2382', '2317'];
+
+        async function runAIStockScreener() {
+            const container = document.getElementById('aiSelectionContainer');
+            let scanResults = [];
+
+            for (const ticker of scanPool) {
+                try {
+                    // 同時請求股價與 AI 預測結果
+                    const [stockRes, predRes] = await Promise.all([
+                        fetch(`${API_BASE_URL}/api/stock/${ticker}`),
+                        fetch(`${API_BASE_URL}/api/prediction/${ticker}`)
+                    ]);
+
+                    if (!stockRes.ok || !predRes.ok) continue;
+
+                    const stockData = (await stockRes.json()).data;
+                    const predData = await predRes.json();
+
+                    if (stockData && stockData.length >= 2) {
+                        const latest = stockData[stockData.length - 1];
+                        const prev = stockData[stockData.length - 2];
+                        const diff = latest.close_price - prev.close_price;
+                        const percent = (diff / prev.close_price) * 100;
+
+                        scanResults.push({
+                            ticker: ticker,
+                            name: latest.stock_name || ticker,
+                            price: latest.close_price,
+                            diff: diff,
+                            percent: percent,
+                            confidence: predData.confidence,
+                            prediction: predData.prediction,
+                            reason: predData.message
+                        });
+                    }
+                } catch (error) {
+                    console.error(`掃描 ${ticker} 時發生錯誤:`, error);
+                }
+            }
+
+            // ⭐ 核心邏輯：將結果依照 AI 算出的「信心分數 (勝率)」由高到低排序
+            scanResults.sort((a, b) => b.confidence - a.confidence);
+
+            // 清空載入動畫
+            container.innerHTML = '';
+
+            // 動態渲染生成卡片
+            scanResults.forEach(item => {
+                let priceClass = item.diff > 0 ? "text-up" : (item.diff < 0 ? "text-down" : "text-flat");
+                let sign = item.diff > 0 ? "+" : "";
+                
+                // 動態 AI 標籤顏色
+                let tagColor = item.confidence >= 55 ? "#ef4444" : (item.confidence <= 45 ? "#22c55e" : "#38bdf8");
+                let tagBg = item.confidence >= 55 ? "rgba(239, 68, 68, 0.1)" : (item.confidence <= 45 ? "rgba(34, 197, 94, 0.1)" : "rgba(56, 189, 248, 0.1)");
+
+                const html = `
+                <div class="stock-card">
+                    <div class="stock-info">
+                        <div class="name-code"><span class="name">${item.name}</span> <span class="code">${item.ticker}</span></div>
+                        <div class="ai-tag" style="color: ${tagColor}; background-color: ${tagBg};">
+                            <i class="fas fa-brain"></i> AI勝率 ${item.confidence}% | ${item.prediction}
+                        </div>
+                        <div style="font-size: 11px; color: #888; margin-top: 8px;">
+                            <i class="fas fa-info-circle"></i> 理由: ${item.reason}
+                        </div>
+                    </div>
+                    <div class="stock-price">
+                        <div class="price ${priceClass}">${item.price.toFixed(2)}</div>
+                        <div class="change ${priceClass}">${sign}${item.diff.toFixed(2)} (${sign}${item.percent.toFixed(2)}%)</div>
+                    </div>
+                </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        // ==========================================
+        // 2. 繪製近五日三大法人買賣超 (靜態展示區塊)
+        // ==========================================
+        const ctxBar = document.getElementById('barChart').getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['D-4', 'D-3', 'D-2', 'D-1', 'Today'],
+                datasets: [
+                    { label: '外資', data: [150, 120, 130, -50, 40], backgroundColor: '#ef4444' }, // 紅
+                    { label: '投信', data: [50, 80, 40, 80, 60], backgroundColor: '#f59e0b' },  // 黃
+                    { label: '自營商', data: [40, 30, 20, -40, 50], backgroundColor: '#8b5cf6' } // 紫
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: { stacked: true, grid: { display: false }, ticks: { color: '#a0a0a0' } },
+                    y: { stacked: true, grid: { color: '#333' }, ticks: { color: '#a0a0a0' } }
+                },
+                plugins: {
+                    legend: { labels: { color: '#e2e8f0', usePointStyle: true, boxWidth: 8 } }
+                }
+            }
+        });
+
+        // ==========================================
+        // 3. 繪製大戶籌碼集中度 (靜態展示區塊)
+        // ==========================================
+        const ctxGauge = document.getElementById('gaugeChart').getContext('2d');
+        new Chart(ctxGauge, {
+            type: 'doughnut',
+            data: {
+                labels: ['低度', '中度', '高度'],
+                datasets: [{
+                    data: [30, 40, 30], // 區塊比例
+                    backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'], // 綠, 黃, 紅
+                    borderWidth: 0,
+                    circumference: 180,
+                    rotation: 270
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            }
+        });
+
+        // ==========================================
+        // 4. 網頁載入時觸發更新
+        // ==========================================
+        window.onload = () => {
+            // 觸發 AI 智慧掃描與排序
+            runAIStockScreener(); 
+        };
+    </script>
+</body>
+</html>

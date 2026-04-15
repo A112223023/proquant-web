@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProQuant AI - 社群討論</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* 基礎設定與深色背景 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            justify-content: center;
+            color: #ffffff;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 414px;
+            height: 100vh;
+            background-color: #121212;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+        }
+
+        /* 頂部 Header */
+        .header {
+            padding: 15px 20px;
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+        }
+        .header-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #e2e8f0;
+        }
+
+        /* 主要內容區 */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            padding-bottom: 80px; /* 留空間給底部導覽列 */
+        }
+        .content::-webkit-scrollbar { display: none; }
+
+        /* A區：AI 輿情摘要 */
+        .ai-summary {
+            background: linear-gradient(145deg, rgba(56, 189, 248, 0.15), rgba(56, 189, 248, 0.05));
+            border: 1px solid rgba(56, 189, 248, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .ai-summary-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #38bdf8;
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+        .ai-summary p {
+            margin: 0;
+            font-size: 14px;
+            color: #e2e8f0;
+            line-height: 1.5;
+        }
+
+        /* 雙欄排版區 (B區與C區) */
+        .split-layout {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr; /* 左邊稍微寬一點 */
+            gap: 12px;
+        }
+
+        /* B區：留言列表 */
+        .comment-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 12px;
+            border: 1px solid #2a2a2a;
+        }
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .avatar {
+            width: 32px;
+            height: 32px;
+            background-color: #334155;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #a0a0a0;
+        }
+        .user-name { font-size: 13px; font-weight: bold; color: #e2e8f0; }
+        .time-ago { font-size: 11px; color: #64748b; }
+        
+        /* 情感標籤 */
+        .sentiment-badge {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+        .badge-sad { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; } /* 悲觀紅 */
+        .badge-happy { background-color: rgba(34, 197, 94, 0.1); color: #22c55e; } /* 樂觀綠 */
+        .badge-neutral { background-color: rgba(234, 179, 8, 0.1); color: #eab308; } /* 中性黃 */
+
+        .stock-tag {
+            display: inline-block;
+            color: #38bdf8;
+            background-color: rgba(56, 189, 248, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            margin-bottom: 6px;
+        }
+        .comment-text {
+            font-size: 13px;
+            color: #cbd5e1;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+        .comment-actions {
+            display: flex;
+            gap: 15px;
+            color: #64748b;
+            font-size: 12px;
+        }
+        .comment-actions i { cursor: pointer; }
+
+        /* C區：右側面板 (熱門與教學) */
+        .side-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .side-card {
+            background-color: #1e1e1e;
+            border-radius: 10px;
+            padding: 12px;
+            border: 1px solid #2a2a2a;
+            border-top: 3px solid #f59e0b; /* 頂部橘黃色裝飾線 */
+        }
+        .side-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #e2e8f0;
+            margin-bottom: 10px;
+        }
+        
+        /* 熱門排行列表 */
+        .trending-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .trending-list li {
+            font-size: 12px;
+            color: #cbd5e1;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .fire-icon { color: #f59e0b; font-size: 10px; }
+
+        /* 教學列表 */
+        .edu-item {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+        .edu-icon {
+            width: 30px;
+            height: 30px;
+            background-color: #334155;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+        .edu-text h5 { margin: 0; font-size: 11px; color: #e2e8f0; line-height: 1.2;}
+        .edu-text p { margin: 2px 0 0 0; font-size: 9px; color: #64748b; }
+
+        /* 懸浮發文按鈕 */
+        .fab-button {
+            position: absolute;
+            bottom: 75px;
+            right: 20px;
+            background: linear-gradient(135deg, #4f46e5, #38bdf8);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+        }
+
+        /* 底部導覽列 */
+        .bottom-nav {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background-color: #1e1e1e;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0;
+            border-top: 1px solid #333;
+            z-index: 20;
+        }
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .nav-item.active { color: #38bdf8; text-shadow: 0 0 10px rgba(56, 189, 248, 0.5); }
+        .nav-item i { font-size: 20px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <div class="header">
+            <div class="header-title">社群與輿情</div>
+            <i class="far fa-bell" style="color: #a0a0a0; font-size: 18px;"></i>
+        </div>
+
+        <div class="content">
+            
+            <div class="ai-summary">
+                <div class="ai-summary-header">
+                    <i class="fas fa-robot"></i> AI 輿情摘要
+                </div>
+                <p>本股熱門話題：大家都在討論法說會不如預期，多數散戶情緒悲觀。</p>
+            </div>
+
+            <div class="split-layout">
+                
+                <div class="feed-column">
+                    
+                    <div class="comment-card">
+                        <div class="user-info">
+                            <div class="user-profile">
+                                <div class="avatar"><i class="fas fa-user"></i></div>
+                                <div>
+                                    <div class="user-name">小韭菜</div>
+                                    <div class="time-ago">10 hours ago</div>
+                                </div>
+                            </div>
+                            <div class="sentiment-badge badge-sad">😥 悲觀</div>
+                        </div>
+                        <div class="stock-tag">2330 台積電</div>
+                        <div class="comment-text">法說會後股價大跌，真令人失望</div>
+                        <div class="comment-actions">
+                            <span><i class="far fa-thumbs-up"></i> 120</span>
+                            <span><i class="far fa-comment"></i> 45</span>
+                        </div>
+                    </div>
+
+                    <div class="comment-card">
+                        <div class="user-info">
+                            <div class="user-profile">
+                                <div class="avatar"><i class="fas fa-user-tie"></i></div>
+                                <div>
+                                    <div class="user-name">賈達費</div>
+                                    <div class="time-ago">3 hours ago</div>
+                                </div>
+                            </div>
+                            <div class="sentiment-badge badge-happy">😃 樂觀</div>
+                        </div>
+                        <div class="stock-tag">2330 台積電</div>
+                        <div class="comment-text">但長期還是看好台積電的技術優勢</div>
+                        <div class="comment-actions">
+                            <span><i class="far fa-thumbs-up"></i> 130</span>
+                            <span><i class="far fa-comment"></i> 45</span>
+                        </div>
+                    </div>
+
+                    <div class="comment-card">
+                        <div class="user-info">
+                            <div class="user-profile">
+                                <div class="avatar"><i class="fas fa-glasses"></i></div>
+                                <div>
+                                    <div class="user-name">李資穠</div>
+                                    <div class="time-ago">6 hours ago</div>
+                                </div>
+                            </div>
+                            <div class="sentiment-badge badge-neutral">😐 中性</div>
+                        </div>
+                        <div class="stock-tag">2330 台積電</div>
+                        <div class="comment-text">先觀察一陣子再說</div>
+                        <div class="comment-actions">
+                            <span><i class="far fa-thumbs-up"></i> 100</span>
+                            <span><i class="far fa-comment"></i> 35</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="side-panel">
+                    
+                    <div class="side-card">
+                        <div class="side-title">熱門排行</div>
+                        <ul class="trending-list">
+                            <li>1. 2330 台積電 <span class="fire-icon"><i class="fas fa-fire"></i><i class="fas fa-fire"></i><i class="fas fa-fire"></i></span></li>
+                            <li>2. 2454 聯發科 <span class="fire-icon"><i class="fas fa-fire"></i><i class="fas fa-fire"></i></span></li>
+                            <li>3. 2603 長榮 <span class="fire-icon"><i class="fas fa-fire"></i></span></li>
+                            <li>4. 3008 大立光 <span class="fire-icon"><i class="fas fa-fire"></i></span></li>
+                        </ul>
+                    </div>
+
+                    <div class="side-card">
+                        <div class="side-title">教學專區</div>
+                        
+                        <div class="edu-item">
+                            <div class="edu-icon"><i class="fas fa-book-open"></i></div>
+                            <div class="edu-text">
+                                <h5>新手入門</h5>
+                                <p>如何看懂財報</p>
+                            </div>
+                        </div>
+                        
+                        <div class="edu-item">
+                            <div class="edu-icon"><i class="fas fa-chart-line"></i></div>
+                            <div class="edu-text">
+                                <h5>技術分析</h5>
+                                <p>K線圖解析</p>
+                            </div>
+                        </div>
+
+                        <div class="edu-item">
+                            <div class="edu-icon"><i class="fas fa-shield-alt"></i></div>
+                            <div class="edu-text">
+                                <h5>風險管理</h5>
+                                <p>停損點的重要性</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <button type="button" class="fab-button">
+            <i class="fas fa-pen"></i> 發新評論
+        </button>
+
+        <div class="bottom-nav">
+            <a href="dashboard.html" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>看盤</span>
+            </a>
+            <a href="selection.html" class="nav-item">
+                <i class="fas fa-search-dollar"></i>
+                <span>選股</span>
+            </a>
+            <a href="ai_analysis.html" class="nav-item">
+                <i class="fas fa-microchip"></i>
+                <span>AI分析</span>
+            </a>
+            <a href="community.html" class="nav-item active">
+                <i class="fas fa-users"></i>
+                <span>社群</span>
+            </a>
+            <a href="education.html" class="nav-item">
+                <i class="fas fa-book-open"></i>
+                <span>教學</span>
+            </a>
+        </div>
+
+    </div>
+
+</body>
+</html>
